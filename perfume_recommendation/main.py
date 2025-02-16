@@ -3,10 +3,11 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
 from perfume_recommendation.routers import llm_router, image_processing_router, image_generation_router, image_generation_description_router, diffuser_router, similar , perfume_router
-from perfume_recommendation.routers import llm_router, image_processing_router, image_generation_router, image_generation_description_router, diffuser_router, similar, review_summary_router
+from perfume_recommendation.routers import llm_router, image_processing_router, image_generation_router, image_generation_description_router, diffuser_router, similar, review_summary_router, keyword_router
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
+from perfume_recommendation.routers import keyword_stats_router  # ### 추가됨
 
 
 # 환경 변수 로드
@@ -45,6 +46,8 @@ app.include_router(diffuser_router.router, prefix="/diffuser", tags=["Diffuser"]
 app.include_router(similar.router, prefix="/similar", tags=["Similar"])
 app.include_router(perfume_router.router, prefix="/perfume", tags=["Perfume"])
 app.include_router(review_summary_router.router, prefix="/review", tags=["Review"])
+app.include_router(keyword_router.router, prefix="/keyword", tags=["Keyword Extraction"])
+app.include_router(keyword_stats_router.router, prefix="/keyword-stats", tags=["Keyword Stats"]) ### 추가됨
 
 # Uvicorn 실행을 위한 엔트리 포인트
 if __name__ == "__main__":

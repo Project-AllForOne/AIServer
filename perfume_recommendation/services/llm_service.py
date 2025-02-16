@@ -1,4 +1,5 @@
 import json
+from transformers import pipeline
 import logging, chromadb, json
 from typing import Optional, Tuple
 from models.img_llm_client import GPTClient
@@ -6,6 +7,7 @@ from .db_service import DBService
 from services.prompt_loader import PromptLoader
 from fastapi import HTTPException
 from chromadb.utils import embedding_functions
+from services.keyword_stats_service import update_keyword_stats  # 추가됨
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,9 @@ class LLMService:
         self.gpt_client = gpt_client
         self.db_service = db_service
         self.prompt_loader = prompt_loader
-
+        
+        self.extractor = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english")  # 추가됨
+        
         self.all_diffusers = self.db_service.load_cached_diffuser_data()
         self.diffuser_scent_descriptions = self.db_service.load_diffuser_scent_cache()
 
@@ -153,6 +157,9 @@ class LLMService:
                     raise ValueError(f"❌ '{extracted_line_name}' 계열이 존재하지 않습니다.")
 
                 logger.info(f"✅ 계열 ID: {line_id}, 브랜드: {extracted_brands}")
+                
+                 # 📌 키워드 통계 업데이트 추가
+                update_keyword_stats([extracted_line_name] + extracted_brands)  # ### 추가됨
 
                 return {
                     "line_id": line_id,

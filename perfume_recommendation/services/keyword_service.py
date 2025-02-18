@@ -2,11 +2,13 @@ import json
 from typing import List
 from collections import Counter
 from datetime import datetime
+import os
 
 
 class KeywordService:
-    def __init__(self, cache_file: str = "data/keywords_cache.json"):
-        self.cache_file = cache_file
+    def __init__(self, cache_dir: str = "data/"):
+        self.cache_dir = cache_dir
+        os.makedirs(self.cache_dir, exist_ok=True)
 
     def save_keywords_cache(self, keywords: List[str]) -> None:
         """
@@ -43,62 +45,82 @@ class KeywordService:
         # 빈도수 높은 순으로 정렬하여 상위 5개 키워드 추출
         sorted_keywords = keyword_freq.most_common(5)
 
-        # 현재 주 (주 단위로 키워드를 구분하기 위해)
-        current_week = datetime.now().strftime("%Y-%U")  # Format as Year-Week
+        # 현재 날짜 기반 파일명 생성
+        current_date = datetime.now().strftime("%Y%m%d")
+        current_file = os.path.join(
+            self.cache_dir, f"weekly_keyword_stats_{current_date}.json"
+        )
 
-        # 지난 주 통계 로드 (파일에서)
-        last_week_stats = self.load_last_week_stats()
+        # 지난 주 파일 찾기
+        last_week_file = self.get_last_week_file()
+        last_week_stats = self.load_json_file(last_week_file) if last_week_file else {}
 
         # 현재 주와 지난 주의 키워드 비교 후 증감 계산
         keyword_changes = self.calculate_keyword_changes(
             sorted_keywords, last_week_stats.get("top_keywords", [])
         )
 
-        # 주간 통계 반환
-        return {
-            "week": current_week,
+        # 주간 통계 저장
+        weekly_stats = {
+            "date": current_date,
             "top_keywords": sorted_keywords,
             "total_keywords": len(keywords),
             "keyword_changes": keyword_changes,
         }
+        self.save_json_file(current_file, weekly_stats)
+
+        return weekly_stats
 
     def save_cache_data(self, data: List[str]) -> None:
         """
         데이터를 JSON 형식으로 캐시 파일에 저장합니다.
         :param data: 저장할 데이터
         """
-        with open(self.cache_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+        cache_file = os.path.join(self.cache_dir, "keywords_cache.json")
+        self.save_json_file(cache_file, data)
 
     def load_cache_data(self) -> List[str]:
         """
         캐시 파일에서 데이터를 로드합니다.
         :return: 로드된 데이터
         """
-        try:
-            with open(self.cache_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except FileNotFoundError:
-            # 파일이 없는 경우 빈 리스트 반환
-            return []
+        cache_file = os.path.join(self.cache_dir, "keywords_cache.json")
+        return self.load_json_file(cache_file, default=[])
 
-    def load_last_week_stats(self) -> dict:
+    def get_last_week_file(self) -> str:
         """
-        지난 주의 키워드 통계를 로드합니다.
-        :return: 지난 주 키워드 통계
+        가장 최근의 주간 키워드 통계 파일을 찾습니다.
+        :return: 가장 최근 파일 경로 (없으면 빈 문자열 반환)
         """
-        try:
-            with open("data/weekly_keyword_stats.json", "r", encoding="utf-8") as f:
-                stats = json.load(f)
-                # 지난 주와 현재 주가 다를 경우만 로드
-                last_week = datetime.now().strftime("%Y-%U")
-                if stats["week"] != last_week:
-                    return stats
-                else:
-                    return {}
-        except FileNotFoundError:
-            # 첫 번째 주 통계라면 빈 딕셔너리 반환
-            return {}
+        files = [
+            f
+            for f in os.listdir(self.cache_dir)
+            if f.startswith("weekly_keyword_stats_")
+        ]
+        files.sort(reverse=True)  # 최신 파일이 먼저 오도록 정렬
+        return os.path.join(self.cache_dir, files[1]) if len(files) > 1 else ""
+
+    def load_json_file(self, file_path: str, default=None):
+        """
+        JSON 파일을 로드합니다.
+        :param file_path: 파일 경로
+        :param default: 파일이 없을 경우 반환할 기본값
+        :return: 로드된 데이터
+        """
+        if not os.path.exists(file_path):
+            return default if default is not None else {}
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def save_json_file(self, file_path: str, data):
+        """
+        데이터를 JSON 파일로 저장합니다.
+        :param file_path: 저장할 파일 경로
+        :param data: 저장할 데이터
+        """
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
 
     def calculate_keyword_changes(self, current_keywords, last_keywords) -> dict:
         """

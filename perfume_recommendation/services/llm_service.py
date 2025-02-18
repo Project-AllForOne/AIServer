@@ -154,6 +154,129 @@ class LLMService:
             "박람회",
         ]
 
+        # 계열 목록
+        self.fragrance_categories = [
+            "스파이시",
+            "프루티",
+            "시트러스",
+            "그린",
+            "알데히드/알데하이드",
+            "아쿠아틱",
+            "푸제르",
+            "구르망",
+            "우디",
+            "오리엔탈",
+            "플로럴/플로랄",
+            "머스크",
+            "파우더리",
+            "타바코레더",
+        ]
+
+        # 브랜드 목록 (일부만 예시로 포함)
+        self.fragrance_brands = [
+            "아쿠아 디 파르마",
+            "이솝",
+            "앰플리튜드",
+            "아틀리에 코롱",
+            "아베다",
+            "베네피트",
+            "바이오더마",
+            "비오템",
+            "비오템 옴므",
+            "바비 브라운",
+            "불가리",
+            "불리1803",
+            "버버리",
+            "바이레도",
+            "까르띠에",
+            "꼬달리",
+            "셀린느",
+            "샤넬",
+            "샬롯 틸버리",
+            "끌로에",
+            "클라란스",
+            "끌레드뽀 보떼",
+            "크리니크",
+            "컴포트 존",
+            "크리드",
+            "데코르테",
+            "디올",
+            "딥티크",
+            "디에스 앤 더가",
+            "에스티 로더",
+            "에따 리브르 도량쥬",
+            "엑스 니힐로",
+            "프레데릭 말",
+            "프레쉬",
+            "조르지오 아르마니",
+            "지방시",
+            "구딸",
+            "구찌",
+            "겔랑",
+            "헬레나 루빈스타인",
+            "에르메스",
+            "아워글래스",
+            "이니시오 퍼퓸",
+            "질 스튜어트",
+            "조 러브스",
+            "조 말론",
+            "줄리엣 헤즈 어 건",
+            "케라스타즈",
+            "키엘",
+            "킬리안",
+            "라 부르켓",
+            "라 메르",
+            "라 프레리",
+            "라로슈포제",
+            "랩 시리즈",
+            "라보라토리오 올파티보",
+            "랑콤",
+            "라티잔 퍼퓨머",
+            "로라 메르시에",
+            "르 라보",
+            "레오놀그렐",
+            "록시땅",
+            "로에베",
+            "로레알 파리",
+            "루나솔",
+            "맥",
+            "메종 프란시스 커정",
+            "메종 마르지엘라",
+            "메이크업 포에버",
+            "멜린앤게츠",
+            "메모",
+            "미우미우",
+            "몰튼 브라운",
+            "나르시소 로드리게즈",
+            "나스",
+            "나소마토",
+            "니샤네",
+            "눅스",
+            "오리베",
+            "오리진스",
+            "퍼퓸 드 말리",
+            "엠디씨아이",
+            "폴앤조",
+            "펜할리곤스",
+            "프라다",
+            "쁘리마쥬",
+            "사봉",
+            "산타 마리아 노벨라",
+            "세르주 루텐",
+            "시세이도",
+            "슈에무라",
+            "시슬리 코스메틱",
+            "에스케이투",
+            "쓰리",
+            "티파니앤코",
+            "톰 포드",
+            "트루동",
+            "어반 디케이",
+            "반클리프 아펠",
+            "베르사체",
+            "입생로랑",
+        ]
+
         if not self.all_diffusers:
             raise RuntimeError("No diffuser data available for initialization.")
 
@@ -250,9 +373,19 @@ class LLMService:
             if noun in self.fragrance_nouns  # 향기 관련 명사 필터링
         ]
 
+        # 계열과 브랜드 매칭
+        matched_categories = [
+            category for category in self.fragrance_categories if category in user_input
+        ]
+        matched_brands = [
+            brand for brand in self.fragrance_brands if brand in user_input
+        ]
+
         return {
             "fragrance_keywords": fragrance_keywords,
             "fragrance_nouns": fragrance_nouns,
+            "matched_categories": matched_categories,
+            "matched_brands": matched_brands,
         }
 
     def extract_keywords_from_input(self, user_input: str) -> dict:

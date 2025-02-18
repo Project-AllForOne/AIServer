@@ -1,9 +1,38 @@
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
-from perfume_recommendation.routers import llm_router, image_processing_router, image_generation_router, image_generation_description_router, diffuser_router, similar , perfume_router
-from perfume_recommendation.routers import llm_router, image_processing_router, image_generation_router, image_generation_description_router, diffuser_router, similar, review_summary_router, keyword_router
+from perfume_recommendation.routers import (
+    llm_router,
+    image_processing_router,
+    image_generation_router,
+    image_generation_description_router,
+    diffuser_router,
+    similar,
+    review_summary_router,
+    bookmark_router,
+    product_router,
+)
+from perfume_recommendation.routers import (
+    llm_router,
+    image_processing_router,
+    image_generation_router,
+    image_generation_description_router,
+    diffuser_router,
+    similar,
+    perfume_router,
+)
+from perfume_recommendation.routers import (
+    llm_router,
+    image_processing_router,
+    image_generation_router,
+    image_generation_description_router,
+    diffuser_router,
+    similar,
+    review_summary_router,
+    keyword_router,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
@@ -17,7 +46,7 @@ load_dotenv()
 app = FastAPI(
     title="Perfume Recommendation API",
     description="향수 추천 및 이미지 처리를 제공하는 API입니다.",
-    version="1.0.1"
+    version="1.0.1",
 )
 
 APP_HOST = os.getenv("APP_HOST")
@@ -27,7 +56,7 @@ APP_PORT = int(os.getenv("APP_PORT"))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 모든 도메인에서 접근 허용 (프로덕션 환경에서는 제한 필요)
-    allow_credentials=True, 
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -39,17 +68,35 @@ os.makedirs("generated_images", exist_ok=True)
 app.mount("/static", StaticFiles(directory="generated_images"), name="static")
 
 app.include_router(llm_router.router, prefix="/llm", tags=["LLM"])
-app.include_router(image_processing_router.router, prefix="/image-processing", tags=["Image Processing"])
-app.include_router(image_generation_router.router, prefix="/image-generation", tags=["Image Generation"])
-app.include_router(image_generation_description_router.router, prefix="/llm" , tags=["LLM-Image-Description"])
+app.include_router(
+    image_processing_router.router,
+    prefix="/image-processing",
+    tags=["Image Processing"],
+)
+app.include_router(
+    image_generation_router.router,
+    prefix="/image-generation",
+    tags=["Image Generation"],
+)
+app.include_router(
+    image_generation_description_router.router,
+    prefix="/llm",
+    tags=["LLM-Image-Description"],
+)
 app.include_router(diffuser_router.router, prefix="/diffuser", tags=["Diffuser"])
 app.include_router(similar.router, prefix="/similar", tags=["Similar"])
-app.include_router(perfume_router.router, prefix="/perfume", tags=["Perfume"])
+app.include_router(product_router.router, prefix="/perfume", tags=["Product"])
 app.include_router(review_summary_router.router, prefix="/review", tags=["Review"])
-app.include_router(keyword_router.router, prefix="/keyword", tags=["Keyword Extraction"])
-app.include_router(keyword_stats_router.router, prefix="/keyword-stats", tags=["Keyword Stats"]) ### 추가됨
+app.include_router(bookmark_router.router, prefix="/bookmark", tags=["Bookmark"])
+app.include_router(
+    keyword_router.router, prefix="/keyword", tags=["Keyword Extraction"]
+)
+app.include_router(
+    keyword_stats_router.router, prefix="/keyword-stats", tags=["Keyword Stats"]
+)  ### 추가됨
 
 # Uvicorn 실행을 위한 엔트리 포인트
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host=APP_HOST, port=APP_PORT)

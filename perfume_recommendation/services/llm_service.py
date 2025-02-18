@@ -349,30 +349,16 @@ class LLMService:
                 status_code=500, detail="Failed to classify user intent."
             )
 
-    def extract_fragrance_keywords(self, user_input: str) -> dict:
+    def extract_perfume_keywords(self, user_input: str) -> dict:
         # 형태소 분석을 통해 명사와 형용사 추출
         tokens = self.mecab.pos(user_input)
 
-        # 명사 추출
-        extracted_nouns = [word for word, pos in tokens if pos == "NNG" or pos == "NNP"]
-
-        # 형용사 추출
-        extracted_adjectives = [
-            word for word, pos in tokens if pos == "VA" or pos == "XR"
-        ]
-
-        # 향기 관련 형용사 추출
+        # 향기 관련 형용사 & 명사 추출
         fragrance_keywords = [
-            adjective
-            for adjective in extracted_adjectives
-            if adjective in self.fragrance_adjectives
-        ]
-
-        # 향기 관련 명사 추출
-        fragrance_nouns = [
-            noun
-            for noun in extracted_nouns
-            if noun in self.fragrance_nouns  # 향기 관련 명사 필터링
+            word
+            for word, pos in tokens
+            if (pos in ["NNG", "NNP", "VA", "XR"])
+            and (word in self.fragrance_adjectives or word in self.fragrance_nouns)
         ]
 
         # 계열과 브랜드 매칭
@@ -383,12 +369,10 @@ class LLMService:
             brand for brand in self.fragrance_brands if brand in user_input
         ]
 
-        return {
-            "fragrance_keywords": fragrance_keywords,
-            "fragrance_nouns": fragrance_nouns,
-            "matched_categories": matched_categories,
-            "matched_brands": matched_brands,
-        }
+        # 하나의 키워드 리스트로 합치기
+        perfume_keywords = fragrance_keywords + matched_categories + matched_brands
+
+        return {"perfume_keywords": perfume_keywords}
 
     def extract_keywords_from_input(
         self, user_input: str, image_caption: Optional[str] = None
@@ -514,24 +498,18 @@ class LLMService:
 
                 logger.info(f"✅ 계열 ID: {line_id}, 브랜드: {extracted_brands}")
 
-                # 5. 향기 관련 키워드 추출 (향기 관련 형용사 등을 분석)
-                fragrance_keywords_result = self.extract_fragrance_keywords(user_input)
-                fragrance_keywords = fragrance_keywords_result.get(
-                    "fragrance_keywords", []
-                )
-                logger.info(f"✅ 향기 관련 형용사: {fragrance_keywords}")
+                # 5. 향기 관련 키워드 추출 (형용사, 명사, 계열, 브랜드 통합)
+                perfume_keywords_result = self.extract_perfume_keywords(user_input)
+                perfume_keywords = perfume_keywords_result.get("perfume_keywords", [])
+                logger.info(f"✅ 추출된 키워드: {perfume_keywords}")
 
-                # 📌 키워드 통계 업데이트: 라인명, 브랜드, 향기 관련 키워드 각각 독립적으로 업데이트
-                update_keyword_stats([extracted_line_name])  # 라인명만 통계에 업데이트
-                update_keyword_stats(extracted_brands)  # 브랜드들만 통계에 업데이트
-                update_keyword_stats(
-                    fragrance_keywords
-                )  # 향기 관련 키워드만 통계에 업데이트
+                # 📌 키워드 통계 업데이트: 라인명과 키워드만 통계에 반영
+                # update_keyword_stats([extracted_line_name])  # 라인명만 통계에 업데이트
+                update_keyword_stats(perfume_keywords)  # 모든 키워드를 통계에 업데이트
 
                 return {
-                    "line_id": line_id,
-                    "brands": extracted_brands,
-                    "fragrance_keywords": fragrance_keywords,  # 향기 관련 키워드 포함
+                    # "line_id": line_id,
+                    "perfume_keywords": perfume_keywords,  # 키워드 통합
                 }
 
             except json.JSONDecodeError as e:

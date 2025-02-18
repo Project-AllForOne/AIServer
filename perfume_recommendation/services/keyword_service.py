@@ -42,8 +42,8 @@ class KeywordService:
         # 키워드의 빈도수 계산 (collections.Counter 사용)
         keyword_freq = Counter(keywords)
 
-        # 빈도수 높은 순으로 정렬하여 상위 5개 키워드 추출
-        sorted_keywords = keyword_freq.most_common(5)
+        # 빈도수 높은 순으로 정렬하여 상위 5개 키워드 추출 (메인 페이지는 Top 3로 수정)
+        sorted_keywords = keyword_freq.most_common(3)
 
         # 현재 날짜 기반 파일명 생성
         current_date = datetime.now().strftime("%Y%m%d")

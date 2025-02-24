@@ -13,6 +13,8 @@ from perfume_recommendation.routers import (
     review_summary_router,
     bookmark_router,
     product_router,
+    scentlens,
+    image_fetch_router,
 )
 from perfume_recommendation.routers import (
     llm_router,
@@ -37,6 +39,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 from perfume_recommendation.routers import keyword_stats_router  # ### 추가됨
+from perfume_recommendation.routers.scentlens import (
+    scentlens_init,
+)  # Import the init function from scentlens.py
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scentlens_init()
+    yield
 
 
 # 환경 변수 로드
@@ -47,6 +59,7 @@ app = FastAPI(
     title="Perfume Recommendation API",
     description="향수 추천 및 이미지 처리를 제공하는 API입니다.",
     version="1.0.1",
+    lifespan=lifespan,
 )
 
 APP_HOST = os.getenv("APP_HOST")
@@ -79,13 +92,17 @@ app.include_router(
     tags=["Image Generation"],
 )
 app.include_router(
+    image_fetch_router.router, prefix="/fetch-image-bytes", tags=["Image Fetch"]
+)
+app.include_router(
     image_generation_description_router.router,
     prefix="/llm",
     tags=["LLM-Image-Description"],
 )
 app.include_router(diffuser_router.router, prefix="/diffuser", tags=["Diffuser"])
 app.include_router(similar.router, prefix="/similar", tags=["Similar"])
-app.include_router(product_router.router, prefix="/perfume", tags=["Product"])
+app.include_router(scentlens.router, prefix="/scentlens", tags=["ScentLens"])
+app.include_router(product_router.router, prefix="/product", tags=["Product"])
 app.include_router(review_summary_router.router, prefix="/review", tags=["Review"])
 app.include_router(bookmark_router.router, prefix="/bookmark", tags=["Bookmark"])
 app.include_router(

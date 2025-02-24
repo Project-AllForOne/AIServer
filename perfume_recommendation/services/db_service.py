@@ -747,25 +747,6 @@ class DBService:
         except pymysql.MySQLError as e:
             logger.error(f"🚨 지난 주 키워드 통계 조회 실패: {e}")
             return {}
-            def get_keywords(self) -> List[Dict[str, int]]:
-        """MySQL에서 최근 7일간 키워드 조회 (중복 제거 & 등장 횟수 포함)"""
-        query = """
-        SELECT keyword, COUNT(*) as count
-        FROM keyword_data
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY keyword
-        ORDER BY count DESC
-        """
-        try:
-            with self.connection.cursor() as cursor:
-                cursor.execute(query)
-                return [
-                    {"keyword": row["keyword"], "count": row["count"]}
-                    for row in cursor.fetchall()
-                ]
-        except pymysql.MySQLError as e:
-            logger.error(f"🚨 키워드 조회 실패: {e}")
-            return []
         if not results:  # 결과가 없을 경우
             return []  # 빈 리스트 반환
 

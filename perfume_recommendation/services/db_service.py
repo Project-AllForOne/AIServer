@@ -10,7 +10,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from collections import defaultdict
 from langchain_openai import ChatOpenAI
-from perfume_recommendation.models.base_model import Base, Product, Note, Spice, ProductImage, Similar, SimilarText, SimilarImage
+from perfume_recommendation.models.base_model import (
+    Base,
+    Product,
+    Note,
+    Spice,
+    ProductImage,
+    Similar,
+    SimilarText,
+    SimilarImage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +31,7 @@ DATABASE_URL = database_url
 engine = create_engine(DATABASE_URL, pool_recycle=pool_recycle_prot)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
+
 def get_db():
     db = SessionLocal()
     try:
@@ -29,10 +39,9 @@ def get_db():
     finally:
         db.close()
 
+
 class DBService:
-    def __init__(
-        self, db_config: Dict[str, str], cache_path_prefix: str = "cache"
-    ):
+    def __init__(self, db_config: Dict[str, str], cache_path_prefix: str = "cache"):
         self.db_config = db_config
         self.connection = self.connect_to_db()
         self.cache_path_prefix = Path(cache_path_prefix)
@@ -42,7 +51,7 @@ class DBService:
         self.gpt_client = self.initialize_gpt_client()
 
     def __del__(self):
-        if hasattr(self, 'session'):
+        if hasattr(self, "session"):
             self.session.close()
 
     def connect_to_db(self):
@@ -69,9 +78,9 @@ class DBService:
             model="gpt-4o-mini",
             temperature=0.7,
             openai_api_key=api_key,
-            openai_api_base=api_base
+            openai_api_base=api_base,
         )
-    
+
     def fetch_brands(self) -> List[str]:
         """DB에서 브랜드 목록을 가져옵니다."""
         query = "SELECT DISTINCT brand FROM product;"
@@ -79,13 +88,13 @@ class DBService:
             with self.connection.cursor() as cursor:
                 cursor.execute(query)
                 brands = [row["brand"] for row in cursor.fetchall()]
-            
+
             logger.info(f"✅ 총 {len(brands)}개의 브랜드 조회 완료")
             return brands
         except pymysql.MySQLError as e:
             logger.error(f"🚨 브랜드 데이터 로드 실패: {e}")
             return []
-    
+
     def fetch_spices_by_line(self, line_id: int) -> List[Dict]:
         """특정 계열(line_id)에 속하는 향료(spice) 목록 조회"""
         try:
@@ -94,16 +103,18 @@ class DBService:
                 FROM spice 
                 WHERE line_id = %s;
             """
-            
+
             with self.connection.cursor() as cursor:
                 cursor.execute(query, (line_id,))
                 spices = cursor.fetchall()
-            
+
             if not spices:
                 logger.warning(f"⚠️ 해당 계열 ID({line_id})에 속하는 향료가 없습니다.")
                 return []
 
-            logger.info(f"✅ 계열 ID({line_id})에 해당하는 향료 {len(spices)}개 조회 완료")
+            logger.info(
+                f"✅ 계열 ID({line_id})에 해당하는 향료 {len(spices)}개 조회 완료"
+            )
             return spices
 
         except pymysql.MySQLError as e:
@@ -128,7 +139,7 @@ class DBService:
         except pymysql.MySQLError as e:
             logger.error(f"🚨 데이터베이스 오류 발생: {e}")
             return []
-    
+
     def get_perfumes_by_middle_notes(self, spice_ids: List[int]) -> List[Dict]:
         """MIDDLE 타입의 노트를 포함한 향수를 검색"""
         try:
@@ -159,7 +170,7 @@ class DBService:
         except pymysql.MySQLError as e:
             logger.error(f"🚨 향수 데이터 로드 실패: {e}")
             raise
-    
+
     # def cache_perfume_data(self, force: bool = False) -> None:
     #     """
     #     DB의 향수 데이터를 JSON 파일로 캐싱. `force=True` 또는 변경 사항이 있을 경우 갱신.
@@ -167,7 +178,7 @@ class DBService:
     #     existing_products = self.load_cached_perfume_data(check_only=True)
 
     #     query = """
-    #     SELECT 
+    #     SELECT
     #         p.id, p.name_kr, p.name_en, p.brand, p.main_accord, p.category_id
     #     FROM product p
     #     """
@@ -190,7 +201,9 @@ class DBService:
     #     except pymysql.MySQLError as e:
     #         logger.error(f"🚨 데이터베이스 오류 발생: {e}")
 
-    def cache_data(self, query: str, cache_file: Path, key_field: str, force: bool = False) -> None:
+    def cache_data(
+        self, query: str, cache_file: Path, key_field: str, force: bool = False
+    ) -> None:
         """
         DB 데이터를 JSON 파일로 캐싱. `force=True` 또는 변경 사항이 있을 경우 갱신.
         """
@@ -230,8 +243,10 @@ class DBService:
 
     #     logger.info(f"✅ 캐싱된 향수 데이터 {len(products)}개 로드")
     #     return products
-    
-    def load_cached_data(self, cache_file: Path, check_only: bool = False) -> List[Dict]:
+
+    def load_cached_data(
+        self, cache_file: Path, check_only: bool = False
+    ) -> List[Dict]:
         """
         캐싱된 데이터를 로드. 캐싱 파일이 없으면 check_only=False일 때 새로 생성.
         """
@@ -254,12 +269,14 @@ class DBService:
         logger.info(f"✅ 캐싱된 데이터 {len(data)}개 로드: {cache_file}")
         return data
 
-    def is_cache_up_to_date(self, existing_products: List[Dict], new_products: List[Dict]) -> bool:
+    def is_cache_up_to_date(
+        self, existing_products: List[Dict], new_products: List[Dict]
+    ) -> bool:
         """
         기존 캐싱 데이터와 새로 가져온 DB 데이터를 비교하여 변경 사항이 있는지 확인.
         """
-        existing_dict = {item['id']: item for item in existing_products}
-        new_dict = {item['id']: item for item in new_products}
+        existing_dict = {item["id"]: item for item in existing_products}
+        new_dict = {item["id"]: item for item in new_products}
 
         # 새로운 ID가 추가되었거나 기존 데이터가 변경되었는지 확인
         if set(existing_dict.keys()) != set(new_dict.keys()):
@@ -289,38 +306,46 @@ class DBService:
         query = """
         SELECT id, note_type, product_id, spice_id FROM note
         """
-        self.cache_data(query, self.cache_path_prefix / "note_cache.json", key_field="id")
-    
+        self.cache_data(
+            query, self.cache_path_prefix / "note_cache.json", key_field="id"
+        )
+
     def cache_perfume_data(self) -> None:
         query = """
         SELECT p.id, p.name_kr, p.name_en, p.brand, p.main_accord, p.category_id FROM product p WHERE p.category_id = 1
         """
-        self.cache_data(query, self.cache_path_prefix / "perfume_cache.json", key_field="id")
+        self.cache_data(
+            query, self.cache_path_prefix / "perfume_cache.json", key_field="id"
+        )
 
     def cache_diffuser_data(self) -> None:
         query = """
         SELECT p.id, p.name_kr, p.name_en, p.brand, p.category_id, p.content FROM product p WHERE p.category_id = 2
         """
-        self.cache_data(query, self.cache_path_prefix / "diffuser_cache.json", key_field="id")
+        self.cache_data(
+            query, self.cache_path_prefix / "diffuser_cache.json", key_field="id"
+        )
 
     def cache_spice_data(self) -> None:
         query = """
         SELECT id, content_en, content_kr, name_en, name_kr, line_id FROM spice
         """
-        self.cache_data(query, self.cache_path_prefix / "spice_cache.json", key_field="id")
-    
+        self.cache_data(
+            query, self.cache_path_prefix / "spice_cache.json", key_field="id"
+        )
+
     def load_cached_note_data(self) -> List[Dict]:
         """
         Load cached note data from note_cache.json.
         """
         return self.load_cached_data(self.cache_path_prefix / "note_cache.json")
-    
+
     def load_cached_perfume_data(self) -> List[Dict]:
         """
         Load cached spice data from perfume_cache.json.
         """
         return self.load_cached_data(self.cache_path_prefix / "perfume_cache.json")
-    
+
     def load_cached_diffuser_data(self) -> List[Dict]:
         """
         Load cached spice data from perfume_cache.json.
@@ -332,13 +357,13 @@ class DBService:
         Load cached spice data from spice_cache.json.
         """
         return self.load_cached_data(self.cache_path_prefix / "spice_cache.json")
-    
+
     def get_product_details(self, product_id, products):
         for product in products:
             if product["id"] == product_id:
                 return product
         return None
-    
+
     def generate_scent_description(self, notes_text, diffuser_description):
         prompt = f"""Based on the following fragrance combination of the diffuser, describe the characteristics of the overall scent using common perfumery terms such as 우디, 플로럴, 스파이시, 시트러스, 허브, 머스크, 아쿠아, 그린, 구르망, 푸제르, 알데하이드, 파우더리, 스모키, 프루티, 오리엔탈, etc. You do not need to break down each note, just focus on the overall scent impression.
             # EXAMPLE 1:
@@ -354,7 +379,7 @@ class DBService:
             # Note: {notes_text}
             # Diffuser Description: {diffuser_description}
             # Response: """
-        
+
         response = self.gpt_client.invoke(prompt).content.strip()
 
         return response
@@ -363,12 +388,16 @@ class DBService:
     def load_diffuser_scent_cache(self):
         """Load diffuser scent descriptions."""
         try:
-            with open(self.cache_path_prefix / "diffuser_scent_cache.json", "r", encoding="utf-8") as f:
+            with open(
+                self.cache_path_prefix / "diffuser_scent_cache.json",
+                "r",
+                encoding="utf-8",
+            ) as f:
                 return {item["id"]: item["scent_description"] for item in json.load(f)}
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.error(f"Error loading diffuser scent data: {e}")
             return {}
-    
+
     def format_notes(self, note_data):
         if "SINGLE" in note_data:
             single_notes = ", ".join(note_data["SINGLE"])
@@ -383,8 +412,10 @@ class DBService:
 
     def save_scent_cache(self, scent_cache):
         # Update scent cache to a list before saving
-        scent_cache_list = [{"id": int(product_id), "scent_description": scent_description} 
-                            for product_id, scent_description in scent_cache.items()]
+        scent_cache_list = [
+            {"id": int(product_id), "scent_description": scent_description}
+            for product_id, scent_description in scent_cache.items()
+        ]
         with open("cache/diffuser_scent_cache.json", "w", encoding="utf-8") as f:
             json.dump(scent_cache_list, f, ensure_ascii=False, indent=4)
 
@@ -411,7 +442,7 @@ class DBService:
                 spice_name = spice_id_to_name.get(note["spice_id"], "")
                 if note_type in note_types and spice_name:
                     product_notes[product_id][note_type].append(spice_name)
-        
+
         # Load the scent cache as a dictionary
         scent_cache = self.load_diffuser_scent_cache()
 
@@ -420,11 +451,15 @@ class DBService:
 
         for product_id, note_data in product_notes.items():
             if str(product_id) in scent_cache:
-                logger.info(f"Product {product_id} already has a cached scent description.")
-                scent_cache_list.append({
-                    "id": int(product_id),
-                    "scent_description": scent_cache[str(product_id)]
-                })
+                logger.info(
+                    f"Product {product_id} already has a cached scent description."
+                )
+                scent_cache_list.append(
+                    {
+                        "id": int(product_id),
+                        "scent_description": scent_cache[str(product_id)],
+                    }
+                )
                 continue
 
             formatted_notes = self.format_notes(note_data)
@@ -435,10 +470,14 @@ class DBService:
                 # Diffuser description is fetched from product details or assigned manually
                 diffuser_description = product_details.get("content", "")
 
-            scent_description = self.generate_scent_description(formatted_notes, diffuser_description)
+            scent_description = self.generate_scent_description(
+                formatted_notes, diffuser_description
+            )
             scent_cache[str(product_id)] = scent_description
 
-            logger.info(f"Scent description for product {product_id}: {scent_description}")
+            logger.info(
+                f"Scent description for product {product_id}: {scent_description}"
+            )
 
         # Save the updated scent cache as a list
         self.save_scent_cache(scent_cache)
@@ -449,9 +488,11 @@ class DBService:
         """향료 이름으로 ID를 가져옵니다."""
         try:
             # LIKE 검색을 위한 패턴 생성
-            patterns = [f"name_kr LIKE '%{note.strip()}%'" for note in note_names] # 한글 이름으로 검색
-            where_clause = " OR ".join(patterns) # OR 조건으로 연결
-            
+            patterns = [
+                f"name_kr LIKE '%{note.strip()}%'" for note in note_names
+            ]  # 한글 이름으로 검색
+            where_clause = " OR ".join(patterns)  # OR 조건으로 연결
+
             query = f"""
                 SELECT id, name_kr
                 FROM spice 
@@ -463,16 +504,16 @@ class DBService:
                     END,
                     name_kr;
             """
-            
+
             with self.connection.cursor() as cursor:
-                cursor.execute(query) # 쿼리 실행
-                result = cursor.fetchall() # 결과를 리스트로 반환
-                
+                cursor.execute(query)  # 쿼리 실행
+                result = cursor.fetchall()  # 결과를 리스트로 반환
+
                 logger.info(f"✅ 요청된 향료: {note_names}")
                 logger.info(f"✅ 매칭된 향료: {[r['name_kr'] for r in result]}")
-                
+
                 return result
-                
+
         except pymysql.MySQLError as e:
             logger.error(f"🚨 향료 데이터 로드 실패: {e}")
             raise
@@ -481,7 +522,7 @@ class DBService:
         """해당 향료가 하나라도 포함된 디퓨저들 중에서 랜덤하게 2개를 선택합니다."""
         try:
             spice_ids_str = ",".join(map(str, spice_ids))
-            
+
             # 먼저 전체 매칭되는 디퓨저 수를 확인
             count_query = f"""
                 SELECT COUNT(DISTINCT p.id) as total_count
@@ -491,7 +532,7 @@ class DBService:
                 AND n.spice_id IN ({spice_ids_str})
                 AND p.name_kr NOT LIKE '%카 디퓨저%'
             """
-            
+
             # 그 다음 랜덤하게 2개 선택
             main_query = f"""
                 SELECT DISTINCT
@@ -512,30 +553,30 @@ class DBService:
                 ORDER BY RAND()
                 LIMIT 2
             """
-            
+
             with self.connection.cursor() as cursor:
                 # 전체 개수 확인
                 cursor.execute(count_query)
-                total_count = cursor.fetchone()['total_count']
+                total_count = cursor.fetchone()["total_count"]
                 logger.info(f"✅ 전체 매칭되는 디퓨저: {total_count}개")
-                
+
                 # 랜덤 선택
                 cursor.execute(main_query)
                 result = cursor.fetchall()
-                
+
                 # 선택된 디퓨저 로깅
                 for diffuser in result:
                     logger.info(
                         f"✅ 선택됨: {diffuser['name_kr']} (ID: {diffuser['id']}) - "
                         f"포함 향료: {diffuser['included_notes']}"
                     )
-                
+
                 return result
-                
+
         except pymysql.MySQLError as e:
             logger.error(f"🚨 디퓨저 데이터 로드 실패: {e}")
             raise
-        
+
     # ORM을 사용하는 새로운 메서드들
     def get_product_by_id(self, product_id: int):
         """SQLAlchemy를 사용하여 제품 정보를 조회합니다."""
@@ -553,8 +594,8 @@ class DBService:
                     Product.id,
                     Product.brand,
                     Product.name_kr,
-                    Product.size_option.label('volume'),
-                    SimilarText.similarity_score
+                    Product.size_option.label("volume"),
+                    SimilarText.similarity_score,
                 )
                 .join(SimilarText, Product.id == SimilarText.similar_product_id)
                 .filter(SimilarText.product_id == product_id)
@@ -563,7 +604,10 @@ class DBService:
                 .all()
             )
             logger.info(f"✅ 텍스트 기반 유사 제품 {len(similar_products)}개 조회 완료")
-            return [dict(zip(['id', 'brand', 'name_kr', 'volume', 'similarity_score'], p)) for p in similar_products]
+            return [
+                dict(zip(["id", "brand", "name_kr", "volume", "similarity_score"], p))
+                for p in similar_products
+            ]
         except Exception as e:
             logger.error(f"🚨 텍스트 기반 유사 제품 조회 실패: {e}")
             return []
@@ -595,45 +639,158 @@ class DBService:
             with open(file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return []
-    
+
     def save_json(self, file_path, data):
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
     def save_spice_therapeutic_effect_cache(self):
-        spice_therapeutic_effect_cache_file = self.cache_path_prefix / "spice_therapeutic_effect_cache.json"
-        
+        spice_therapeutic_effect_cache_file = (
+            self.cache_path_prefix / "spice_therapeutic_effect_cache.json"
+        )
+
         spice_data = self.load_cached_spice_data()
-        spice_therapeutic_effect_data = self.load_json(spice_therapeutic_effect_cache_file)
-        spice_therapeutic_effect_dict = {entry["id"]: entry for entry in spice_therapeutic_effect_data}
-        
+        spice_therapeutic_effect_data = self.load_json(
+            spice_therapeutic_effect_cache_file
+        )
+        spice_therapeutic_effect_dict = {
+            entry["id"]: entry for entry in spice_therapeutic_effect_data
+        }
+
         updated = False
         for spice in spice_data:
             if spice["id"] not in spice_therapeutic_effect_dict:
-                spice_therapeutic_effect_value = self.query_gpt_for_therapeutic_effect(spice["name_en"])
-                spice_therapeutic_effect_entry = {"id": spice["id"], "name_en": spice["name_en"], "effect": spice_therapeutic_effect_value}
+                spice_therapeutic_effect_value = self.query_gpt_for_therapeutic_effect(
+                    spice["name_en"]
+                )
+                spice_therapeutic_effect_entry = {
+                    "id": spice["id"],
+                    "name_en": spice["name_en"],
+                    "effect": spice_therapeutic_effect_value,
+                }
                 spice_therapeutic_effect_data.append(spice_therapeutic_effect_entry)
-                spice_therapeutic_effect_dict[spice["name_en"]] = spice_therapeutic_effect_entry
+                spice_therapeutic_effect_dict[spice["name_en"]] = (
+                    spice_therapeutic_effect_entry
+                )
                 updated = True
-        
+
         if updated:
-            self.save_json(spice_therapeutic_effect_cache_file, spice_therapeutic_effect_data)
+            self.save_json(
+                spice_therapeutic_effect_cache_file, spice_therapeutic_effect_data
+            )
             print("spice_therapeutic_effect_cache.json has been updated.")
         else:
-            print("All spices already have an entry in spice_therapeutic_effect_cache.json.")
+            print(
+                "All spices already have an entry in spice_therapeutic_effect_cache.json."
+            )
 
     def load_cached_spice_therapeutic_effect_data(self):
         """Load spice therapeutic effect data from cache."""
         try:
-            with open(self.cache_path_prefix / "spice_therapeutic_effect_cache.json", "r", encoding="utf-8") as f:
+            with open(
+                self.cache_path_prefix / "spice_therapeutic_effect_cache.json",
+                "r",
+                encoding="utf-8",
+            ) as f:
                 return json.load(f)
         except FileNotFoundError:
             logger.error("spice_therapeutic_effect_cache.json 파일을 찾을 수 없습니다.")
             return []
         except json.JSONDecodeError:
-            logger.error("spice_therapeutic_effect_cache.json 파일을 파싱하는 중 오류가 발생했습니다.")
+            logger.error(
+                "spice_therapeutic_effect_cache.json 파일을 파싱하는 중 오류가 발생했습니다."
+            )
             return []
-    
+
+    def get_keywords(self) -> List[Dict[str, int]]:
+        """MySQL에서 최근 7일간 키워드 조회 (중복 제거 & 등장 횟수 포함)"""
+        query = """
+        SELECT keyword, COUNT(*) as count
+        FROM keyword_data
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY keyword
+        ORDER BY count DESC
+        """
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(query)
+                return [
+                    {"keyword": row["keyword"], "count": row["count"]}
+                    for row in cursor.fetchall()
+                ]
+        except pymysql.MySQLError as e:
+            logger.error(f"🚨 키워드 조회 실패: {e}")
+            return []
+        if not results:  # 결과가 없을 경우
+            return []  # 빈 리스트 반환
+
+    def get_last_week_stats(self) -> dict:
+        """MySQL에서 지난 주 키워드 통계 조회 (안전한 날짜 조건 추가)"""
+        query = """
+        SELECT * FROM keyword_stats
+        WHERE date < CURRENT_DATE - INTERVAL 7 DAY
+        ORDER BY date DESC
+        LIMIT 1
+        """
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(query)
+                result = cursor.fetchone()
+                if result:
+                    return {
+                        "date": result["date"],
+                        "top_keywords": json.loads(result["top_keywords"]),
+                        "total_keywords": result["total_keywords"],
+                        "keyword_changes": json.loads(result["keyword_changes"]),
+                    }
+                return {}
+        except pymysql.MySQLError as e:
+            logger.error(f"🚨 지난 주 키워드 통계 조회 실패: {e}")
+            return {}
+            def get_keywords(self) -> List[Dict[str, int]]:
+        """MySQL에서 최근 7일간 키워드 조회 (중복 제거 & 등장 횟수 포함)"""
+        query = """
+        SELECT keyword, COUNT(*) as count
+        FROM keyword_data
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY keyword
+        ORDER BY count DESC
+        """
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(query)
+                return [
+                    {"keyword": row["keyword"], "count": row["count"]}
+                    for row in cursor.fetchall()
+                ]
+        except pymysql.MySQLError as e:
+            logger.error(f"🚨 키워드 조회 실패: {e}")
+            return []
+        if not results:  # 결과가 없을 경우
+            return []  # 빈 리스트 반환
+
+    def save_weekly_stats(self, weekly_stats: dict) -> None:
+        """주간 키워드 통계를 MySQL에 저장"""
+        query = """
+        INSERT INTO keyword_stats (date, top_keywords, total_keywords, keyword_changes)
+        VALUES (%s, %s, %s, %s)
+        """
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(
+                    query,
+                    (
+                        weekly_stats["date"],
+                        json.dumps(weekly_stats["top_keywords"], ensure_ascii=False),
+                        weekly_stats["total_keywords"],
+                        json.dumps(weekly_stats["keyword_changes"], ensure_ascii=False),
+                    ),
+                )
+            self.connection.commit()
+        except pymysql.MySQLError as e:
+            logger.error(f"🚨 주간 키워드 통계 저장 실패: {e}")
+
+
 # 캐싱 생성 기능 실행
 if __name__ == "__main__":
     import os

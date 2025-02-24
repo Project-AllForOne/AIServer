@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from chromadb.utils import embedding_functions
 from services.keyword_stats_service import update_keyword_stats  # 추가됨
 from konlpy.tag import Mecab
+from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,9 @@ class LLMService:
         self.db_service = db_service
         self.prompt_loader = prompt_loader
 
-        self.extractor = pipeline("ner", model="beomi/kcbert-base")  # 한국어 모델 사용
+        self.model = SentenceTransformer(
+            "snunlp/KLUE-SRoBERTa-Large-SNUExtended-klueNLI-klueSTS"
+        )
 
         self.all_diffusers = self.db_service.load_cached_diffuser_data()
         self.diffuser_scent_descriptions = self.db_service.load_diffuser_scent_cache()
@@ -502,6 +505,12 @@ class LLMService:
                 perfume_keywords_result = self.extract_perfume_keywords(user_input)
                 perfume_keywords = perfume_keywords_result.get("perfume_keywords", [])
                 logger.info(f"✅ 추출된 키워드: {perfume_keywords}")
+
+                if perfume_keywords:
+                    self.keyword_service.save_keywords(
+                        user_input, perfume_keywords
+                    )  # ⬅️ 키워드 저장 추가
+                    logger.info(f"✅ 키워드 저장 완료: {perfume_keywords}")
 
                 # 📌 키워드 통계 업데이트: 라인명과 키워드만 통계에 반영
                 # update_keyword_stats([extracted_line_name])  # 라인명만 통계에 업데이트
